@@ -7,7 +7,7 @@ using System.Threading;
 using Newtonsoft.Json;
 using Npgsql;
 using StackExchange.Redis;
-
+using DotNetEnv;
 namespace Worker
 {
     public class Program
@@ -16,9 +16,21 @@ namespace Worker
         {
             try
             {
-                var pgsql = OpenDbConnection("Server=db;Username=postgres;Password=postgres;");
-                var redisConn = OpenRedisConnection("redis");
-                var redis = redisConn.GetDatabase();
+   
+                // Load environment variables from .env file
+		DotNetEnv.Env.Load();
+
+		var redisHostname = Environment.GetEnvironmentVariable("REDIS_HOSTNAME");
+	       	var redisConn = OpenRedisConnection(redisHostname);
+		var redis = redisConn.GetDatabase();
+                var dbServer = Environment.GetEnvironmentVariable("DB_SERVER");
+                var dbUsername = Environment.GetEnvironmentVariable("DB_USERNAME");
+                var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
+                var hostname = Environment.GetEnvironmentVariable("REDIS_HOST");
+
+                Console.WriteLine($"REDIS_HOSTNAME: {redisHostname}");
+ 
+		var pgsql = OpenDbConnection($"Server={dbServer};Username={dbUsername};Password={dbPassword}");
 
                 // Keep alive is not implemented in Npgsql yet. This workaround was recommended:
                 // https://github.com/npgsql/npgsql/issues/1214#issuecomment-235828359
@@ -105,7 +117,8 @@ namespace Worker
         private static ConnectionMultiplexer OpenRedisConnection(string hostname)
         {
             // Use IP address to workaround https://github.com/StackExchange/StackExchange.Redis/issues/410
-            var ipAddress = GetIp(hostname);
+	    
+	    var ipAddress = GetIp(hostname);
             Console.WriteLine($"Found redis at {ipAddress}");
 
             while (true)
